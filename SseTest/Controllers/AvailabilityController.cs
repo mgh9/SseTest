@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SseTest.Api.Models;
 using SseTest.Api.Services;
 
@@ -7,15 +6,8 @@ namespace SseTest.Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class AvailabilityController : ControllerBase
+public partial class AvailabilityController(ISseNotifier<OrchestratorAvailabilities> sseNotifier) : ControllerBase
 {
-    [HttpDelete("cache")]
-    public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
-    {
-        Cache.Clear();
-        await Task.CompletedTask;
-    }
-
     [HttpGet("stream")]
     public async Task Stream(CancellationToken cancellationToken)
     {
@@ -25,7 +17,10 @@ public class AvailabilityController : ControllerBase
 
         // Create a unique session for this client
         var sessionId = Guid.NewGuid().ToString();
-        var orchestrator = new OrchestratorSseSample(sessionId);
+
+        // Create a new event channel for this session
+        var eventChannel = new ProviderEventChannel();
+        var orchestrator = new OrchestratorSseSample(sessionId, sseNotifier, eventChannel);
 
         Console.WriteLine($"Starting SSE stream for session {sessionId}");
 
@@ -34,22 +29,8 @@ public class AvailabilityController : ControllerBase
             // Start the orchestrator in background
             var orchestratorTask = Task.Run(async () => await orchestrator.StartAsync(cancellationToken), cancellationToken);
 
-            // Subscribe to data updates
-            await foreach (var update in orchestrator.GetUpdatesAsync(cancellationToken))
-            {
-                var availabilityJson = JsonSerializer.Serialize(update);
-                Console.WriteLine($"data >>> {availabilityJson}");
-
-                await Response.WriteAsync($"data: {availabilityJson}\n\n", cancellationToken);
-                await Response.Body.FlushAsync(cancellationToken);
-
-                // If all providers are done, end the stream
-                if (!update.IsInProgress)
-                {
-                    Console.WriteLine("All providers completed - ending stream");
-                    break;
-                }
-            }
+            // Subscribe to SSE updates using the notifier
+            await sseNotifier.SubscribeAsync(sessionId, Response.Body, cancellationToken);
         }
         catch (OperationCanceledException ex)
         {
@@ -61,11 +42,12 @@ public class AvailabilityController : ControllerBase
         }
     }
 
-    private static readonly OrchestratorPollingSample _pollingOrchestrator = new();
-    [HttpGet("polling")]
-    public async Task<IActionResult> PollingAsync()
+    [HttpDelete("cache")]
+    public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
     {
-        var availabilities = await _pollingOrchestrator.GetDataAsync(CancellationToken.None);
-        return Ok(availabilities);
+        Cache.Clear();
+        OrchestratorPollingSample.Reset();
+        await Task.CompletedTask;
     }
 }
+
