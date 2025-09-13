@@ -7,6 +7,13 @@ namespace SseTest.Api.Controllers;
 [Route("[controller]")]
 public class AvailabilityController : ControllerBase
 {
+    [HttpPost("clear")]
+    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        Cache.Clear();
+        await Task.CompletedTask;
+    }
+
     [HttpGet("stream")]
     public async Task Stream(CancellationToken cancellationToken)
     {
@@ -16,7 +23,7 @@ public class AvailabilityController : ControllerBase
 
         // Create a unique session for this client
         var sessionId = Guid.NewGuid().ToString();
-        var orchestrator = new Orchestrator(sessionId);
+        var orchestrator = new OrchestratorSse(sessionId);
 
         Console.WriteLine($"Starting SSE stream for session {sessionId}");
 
@@ -52,20 +59,11 @@ public class AvailabilityController : ControllerBase
         }
     }
 
+    private static readonly OrchestratorPolling _pollingOrchestrator = new();
     [HttpGet("polling")]
-    public IActionResult Polling()
+    public async Task<IActionResult> PollingAsync()
     {
-        // For demo: create a new orchestrator session per request
-        var sessionId = Guid.NewGuid().ToString();
-        var orchestrator = new Orchestrator(sessionId);
-        
-        // Start providers if not already started (simulate as if this is the first call)
-        // We'll use a background task to start providers, but return immediately
-        _ = Task.Run(async () => await orchestrator.StartAsync(CancellationToken.None));
-
-        // Return the current state (may be empty or partial)
-        var availabilities = orchestrator.GetCurrentSnapshot();
-
+        var availabilities = await _pollingOrchestrator.GetDataAsync(CancellationToken.None);
         return Ok(availabilities);
     }
 }

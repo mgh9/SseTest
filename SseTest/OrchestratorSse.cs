@@ -2,26 +2,26 @@
 
 namespace SseTest.Api;
 
-public class Orchestrator
+public class OrchestratorSse
 {
     private readonly string _sessionId;
     private readonly List<Provider> _providers;
     private readonly Channel<OrchestratorAvailabilities> _updateChannel;
-    private readonly Cache _cache;
     private bool _isStarted = false;
 
-    public Orchestrator(string sessionId)
+    public OrchestratorSse(string sessionId)
     {
         _sessionId = sessionId;
-        _cache = new Cache();
         _updateChannel = Channel.CreateUnbounded<OrchestratorAvailabilities>();
 
         _providers =
         [
-            new Provider("Provider 1", 2, _cache, _updateChannel),
-            new Provider("Provider 2", 5, _cache, _updateChannel),
-            new Provider("Provider 3", 9, _cache, _updateChannel),
+            new Provider("Provider 1", 2, _updateChannel, true),
+            new Provider("Provider 2", 5, _updateChannel, true),
+            new Provider("Provider 3", 9, _updateChannel, true),
         ];
+
+        Cache.Clear();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public class Orchestrator
         await SendUpdateAsync();
 
         // Start all providers asynchronously
-        var providerTasks = _providers.Select(p => p.StartRetrievingFlightsFromSupplier(cancellationToken)).ToArray();
+        var providerTasks = _providers.Select(p => p.StartRetrievingFlightsFromSupplierAsync(cancellationToken)).ToArray();
 
         // Wait for all providers to complete
         await Task.WhenAll(providerTasks);
@@ -53,8 +53,8 @@ public class Orchestrator
     {
         var update = new OrchestratorAvailabilities
         {
-            IsInProgress = !_cache.AreAllProvidersDone(_providers),
-            Availabilities = _cache.GetAllResponses()
+            IsInProgress = !Cache.AreAllProvidersDone(_providers),
+            Availabilities = Cache.GetAllResponses()
         };
 
         await _updateChannel.Writer.WriteAsync(update);
@@ -72,8 +72,8 @@ public class Orchestrator
     {
         return new OrchestratorAvailabilities
         {
-            IsInProgress = !_cache.AreAllProvidersDone(_providers),
-            Availabilities = _cache.GetAllResponses()
+            IsInProgress = !Cache.AreAllProvidersDone(_providers),
+            Availabilities = Cache.GetAllResponses()
         };
     }
 }
