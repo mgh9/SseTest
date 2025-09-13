@@ -7,8 +7,8 @@ namespace SseTest.Api.Controllers;
 [Route("[controller]")]
 public class AvailabilityController : ControllerBase
 {
-    [HttpPost("clear")]
-    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    [HttpDelete("cache")]
+    public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
     {
         Cache.Clear();
         await Task.CompletedTask;
