@@ -1,6 +1,4 @@
-﻿using SseTest.Api.Controllers;
-
-namespace SseTest.Api;
+﻿namespace SseTest.Api.Models;
 
 public static class Cache
 {

@@ -1,23 +1,12 @@
 ﻿using System.Threading.Channels;
 using Bogus;
-using SseTest.Api.Controllers;
 
-namespace SseTest.Api;
+namespace SseTest.Api.Models;
 
-public class Provider
+public class Provider(string name, int delayInSeconds, Channel<OrchestratorAvailabilities> updateChannel, bool sendUpdate)
 {
-    public string Name { get; }
-    public int DelayInSeconds { get; }
-    private readonly Channel<OrchestratorAvailabilities> _updateChannel;
-    private readonly bool _sendUpdate;
-
-    public Provider(string name, int delayInSeconds, Channel<OrchestratorAvailabilities> updateChannel, bool sendUpdate)
-    {
-        Name = name;
-        DelayInSeconds = delayInSeconds;
-        _updateChannel = updateChannel;
-        _sendUpdate = sendUpdate;
-    }
+    public string Name { get; } = name;
+    public int DelayInSeconds { get; } = delayInSeconds;
 
     public async Task StartRetrievingFlightsFromSupplierAsync(CancellationToken cancellationToken)
     {
@@ -44,7 +33,7 @@ public class Provider
         Cache.AddResult(Name, data);
 
         // Send update after adding result
-        if(_sendUpdate)
+        if(sendUpdate)
             await SendUpdateAsync();
     }
 
@@ -56,7 +45,7 @@ public class Provider
             Availabilities = Cache.GetAllResponses()
         };
 
-        await _updateChannel.Writer.WriteAsync(update);
+        await updateChannel.Writer.WriteAsync(update);
     }
 }
 

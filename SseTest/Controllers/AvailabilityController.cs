@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using SseTest.Api.Models;
+using SseTest.Api.Services;
 
 namespace SseTest.Api.Controllers;
 
@@ -23,7 +25,7 @@ public class AvailabilityController : ControllerBase
 
         // Create a unique session for this client
         var sessionId = Guid.NewGuid().ToString();
-        var orchestrator = new OrchestratorSse(sessionId);
+        var orchestrator = new OrchestratorSseSample(sessionId);
 
         Console.WriteLine($"Starting SSE stream for session {sessionId}");
 
@@ -59,7 +61,7 @@ public class AvailabilityController : ControllerBase
         }
     }
 
-    private static readonly OrchestratorPolling _pollingOrchestrator = new();
+    private static readonly OrchestratorPollingSample _pollingOrchestrator = new();
     [HttpGet("polling")]
     public async Task<IActionResult> PollingAsync()
     {

@@ -1,14 +1,15 @@
 ﻿using System.Threading.Channels;
+using SseTest.Api.Models;
 
-namespace SseTest.Api;
+namespace SseTest.Api.Services;
 
-public class OrchestratorPolling
+public class OrchestratorPollingSample
 {
     private readonly List<Provider> _providers;
     private readonly Channel<OrchestratorAvailabilities> _updateChannel;
     private bool _isStarted = false;
 
-    public OrchestratorPolling()
+    public OrchestratorPollingSample()
     {
         _updateChannel = Channel.CreateUnbounded<OrchestratorAvailabilities>();
 
